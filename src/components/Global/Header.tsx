@@ -23,14 +23,14 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
 const Header = () => {
-  const { theme, setTheme } = useTheme();
+    const { theme, setTheme } = useTheme();
     const router = useRouter();
-  
+    const { data: session } = useSession();
     const handleLogout = async () => {
-      await signOut({ redirect: false });
-      router.push('/signin');
+        await signOut({ redirect: false });
+        router.push('/signin');
     };
-  
+
 
     return (
         <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
@@ -88,9 +88,9 @@ const Header = () => {
                         </div>
                         <DropdownMenuSeparator />
                         <Link href={'/dashboard/notifications'}>
-                        <DropdownMenuItem className="justify-center font-medium">
-                            View all notifications
-                        </DropdownMenuItem>
+                            <DropdownMenuItem className="justify-center font-medium">
+                                View all notifications
+                            </DropdownMenuItem>
                         </Link>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -107,8 +107,8 @@ const Header = () => {
                     <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuLabel>
                             <div className="flex flex-col">
-                                <p>John Doe</p>
-                                <p className="text-xs text-muted-foreground">john.doe@example.com</p>
+                                <p>{session?.user?.name}</p>
+                                <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
@@ -130,10 +130,10 @@ const Header = () => {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive">
-                           <Button onClick={handleLogout}>
-                             <LogOut className="mr-2 h-4 w-4" />
-                            Log out
-                           </Button>
+                            <Button onClick={handleLogout}>
+                                <LogOut className="mr-2 h-4 w-4" />
+                                Log out
+                            </Button>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

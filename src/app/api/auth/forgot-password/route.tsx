@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     );
 
     await transporter.sendMail({
-      from: '"York Publishing Co." <no-reply@yourapp.com>',
+      from: '"York Publishing Co." <no-reply@yorkpublishers.com>',
       to: email,
       subject: 'Reset Your Password',
       html: emailHtml,

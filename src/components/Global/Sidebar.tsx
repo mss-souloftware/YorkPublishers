@@ -18,6 +18,7 @@ import { useSession } from 'next-auth/react';
 
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 
 const Sidebar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -42,7 +43,7 @@ const Sidebar = () => {
     >
       {/* Header */}
       <div className="p-4 flex items-center justify-between">
-        {sidebarOpen && <h1 className="font-bold text-xl">Acme Inc</h1>}
+        {sidebarOpen && <h1 className="font-bold text-xl invert w-50"><Image src="/favicon.png" alt="Logo" width={170} height={70}></Image></h1>}
 
         <Button
           variant="ghost"
