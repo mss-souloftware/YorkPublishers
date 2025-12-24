@@ -17,6 +17,7 @@ model User {
   updatedAt DateTime @updatedAt
   roleId    Int
   role      Role     @relation(fields: [roleId], references: [id])
+  passwordReset PasswordReset[]
 }
 
 model Role {
@@ -26,6 +27,16 @@ model Role {
   updatedAt   DateTime         @updatedAt
   permissions RolePermission[]
   users       User[]
+}
+
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique // store hashed token
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Permission {

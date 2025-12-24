@@ -26,9 +26,9 @@ export default function SignInPage() {
 
     if (session?.user?.role) {
       if (session.user.role === 'ADMIN') {
-        router.push('/admin');
+        router.push('/dashboard');
       } else if (session.user.role === 'CUSTOMER') {
-        router.push('/organizer');
+        router.push('/dashboard');
       } else {
         router.push('/dashboard');
       }

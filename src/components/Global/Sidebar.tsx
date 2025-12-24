@@ -10,6 +10,7 @@ import {
   Activity,
   DollarSign,
   Book,
+  UserLock 
 } from 'lucide-react';
 
 import Link from 'next/link';
@@ -26,7 +27,7 @@ const Sidebar = () => {
   const menuItems = [
     { icon: Home, label: 'Overview', link: 'overview' },
     { icon: Users, label: 'Users', link: 'users', adminOnly: true },
-    { icon: Book, label: 'Roles', link: 'roles', adminOnly: true },
+    { icon: UserLock , label: 'Permission Management', link: 'roles', adminOnly: true },
     { icon: Activity, label: 'Analytics', link: 'analytics' },
     { icon: DollarSign, label: 'Revenue', link: 'revenue' },
     { icon: Book, label: 'Books', link: 'books/add' },

@@ -1,4 +1,4 @@
-import { AuthOptions } from "next-auth"; // ← this is the correct import
+import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import { verifyPassword } from "./auth";
@@ -12,48 +12,54 @@ export const authOptions: AuthOptions = {
       credentials: {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
-        
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
-          include: {
-            role: true,
-          },
+          include: { role: true },
         });
 
-        if (!user) throw new Error("User not found");
+        if (!user) return null;
 
-        const isValid = await verifyPassword(
-          credentials.password,
-          user.password
-        );
-        if (!isValid) throw new Error("Invalid password");
+        const isValid = await verifyPassword(credentials.password, user.password);
+        if (!isValid) return null;
 
         return {
-          id: user.id.toString(),
+          id: user.id.toString(),                    // ← Critical
           email: user.email,
-          role: user.role.name  as "ADMIN" | "USER" | "CUSTOMER",
+          name: user.name ?? null,
+          role: user.role.name as "ADMIN" | "USER" | "CUSTOMER",
         };
       },
     }),
   ],
 
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+  },
 
   callbacks: {
     async jwt({ token, user }) {
-      if (user?.role) token.role = user.role;
+      // First call (during sign-in): `user` is available
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+      }
       return token;
     },
 
     async session({ session, token }) {
-      if (session.user && token.role) {
-        session.user.role = token.role;
-      }
+      // Always copy from token → session
+      session.user.id = token.id as string;
+      session.user.role = token.role as "ADMIN" | "USER" | "CUSTOMER";
+
       return session;
     },
+  },
+
+  pages: {
+    signIn: "/signin",
   },
 };

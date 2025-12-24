@@ -11,6 +11,7 @@ import Sidebar from '@/components/Global/Sidebar';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import Header from '@/components/Global/Header';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -161,7 +162,8 @@ export default function UserDetailPage({ params }: Props) {
     <div className="flex h-screen bg-background text-foreground">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
+        <Header/>
+        <div className=" border-b border-border px-6 py-4 flex items-center justify-between">
           <h1 className="text-3xl font-bold">User Profile</h1>
           <Link href={`/dashboard/users/${user.id}/edit`}>
             <Button variant="outline">
@@ -169,7 +171,7 @@ export default function UserDetailPage({ params }: Props) {
               Edit User
             </Button>
           </Link>
-        </header>
+        </div>
 
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           <Card>
