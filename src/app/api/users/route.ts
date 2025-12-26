@@ -24,6 +24,7 @@ export async function GET() {
           name: true,
         },
       },
+      profile: true,
       status: true,
       createdAt: true,
     },

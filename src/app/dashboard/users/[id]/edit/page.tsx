@@ -47,7 +47,6 @@ export default function UserDetailEditPage({ params }: Props) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -57,18 +56,15 @@ export default function UserDetailEditPage({ params }: Props) {
   const router = useRouter();
   const { data: session } = useSession();
 
-  // Admin-only access
   useEffect(() => {
     if (session && session.user.role !== 'ADMIN') {
       router.push('/dashboard');
     }
   }, [session, router]);
 
-  // Fetch user + roles + permissions
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch user
         const userRes = await fetch(`/api/users/${id}`);
         if (!userRes.ok) throw new Error('Failed to load user');
 
@@ -79,14 +75,13 @@ export default function UserDetailEditPage({ params }: Props) {
         setRoleId(userData.role.id);
         setStatus(userData.status as any);
 
-        // Fetch all roles
-        const rolesRes = await fetch('/api/roles'); // You'll need this endpoint
+    
+        const rolesRes = await fetch('/api/roles'); 
         if (rolesRes.ok) {
           const rolesData = await rolesRes.json();
           setRoles(rolesData);
         }
 
-        // Fetch permissions for current role
         await fetchPermissionsForRole(userData.role.id);
       } catch (err) {
         setError('Failed to load data');
@@ -110,7 +105,6 @@ export default function UserDetailEditPage({ params }: Props) {
     if (id) fetchData();
   }, [id]);
 
-  // Update permissions preview when role changes
   useEffect(() => {
     if (roleId) {
       const fetchPermissions = async () => {
@@ -154,6 +148,18 @@ export default function UserDetailEditPage({ params }: Props) {
 
       if (res.ok) {
         setSuccess('User updated successfully!');
+             try {
+          await prisma.userActivity.create({
+            data: {
+              Id: session?.user.id,
+              action: "Edited profile",
+              details: "User edited their profile",
+            },
+          });
+        } catch (error) {
+          console.error("Failed to log profile activity:", error);
+        }
+
       } else {
         const data = await res.json();
         setError(data.error || 'Failed to update user');

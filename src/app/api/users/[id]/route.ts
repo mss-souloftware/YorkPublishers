@@ -38,6 +38,7 @@ export async function GET(
       role: true,
       status: true,
       createdAt: true,
+      profile: true,
     },
   });
 
@@ -103,6 +104,14 @@ export async function PUT(
           select: {
             id: true,
             name: true,
+          },
+        },
+        profile: {
+          select: {
+            bio: true,
+            phone: true,
+            address: true,
+            profileImage: true,
           },
         },
       },

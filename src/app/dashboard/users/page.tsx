@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
@@ -37,7 +37,8 @@ import {
 
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { toast } from 'react-toastify'; 
+import { toast } from 'react-toastify';
+import Image from 'next/image';
 
 type User = {
   id: number;
@@ -46,6 +47,16 @@ type User = {
   role: { id: number; name: string };
   status: string;
   createdAt: string;
+  profile: profile | null;
+};
+
+type profile = {
+  id: number;
+  userId: number;
+  bio: string | null;
+  phone: string | null;
+  address: string | null;
+  profileImage: string | null;
 };
 
 export default function UsersPage() {
@@ -134,6 +145,8 @@ export default function UsersPage() {
     }
   };
 
+
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -147,7 +160,7 @@ export default function UsersPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        
+
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-end">
             <Link href="/dashboard/users/add">
@@ -207,12 +220,21 @@ export default function UsersPage() {
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center space-x-3">
-                            <Avatar>
-                              <AvatarFallback>
-                                {user.name
+                            <Avatar className="h-24 w-24">
+                              {user.profile?.profileImage ? (
+                                <AvatarImage
+                                  src={user.profile.profileImage}
+                                  alt={`${user.name || user.email}'s profile picture`}
+                                  className="object-cover"
+                                />
+                                
+                              ) : (
+
+                                <AvatarFallback className="text-2xl">{user.name
                                   ? user.name.split(' ').map(n => n[0].toUpperCase()).join('').slice(0, 2)
-                                  : user.email[0].toUpperCase()}
-                              </AvatarFallback>
+                                  : user.email[0].toUpperCase()}</AvatarFallback>
+                              )
+                              }
                             </Avatar>
                             <div>
                               <p className="font-medium">{user.name || 'Unnamed'}</p>
@@ -231,7 +253,7 @@ export default function UsersPage() {
                           <Badge
                             variant={
                               user.status === 'Active' ? 'default' :
-                              user.status === 'Inactive' ? 'secondary' : 'outline'
+                                user.status === 'Inactive' ? 'secondary' : 'outline'
                             }
                           >
                             {user.status}

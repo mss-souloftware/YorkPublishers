@@ -1,17 +1,18 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Mail, Phone, Calendar, Edit, Shield, Activity, CheckCircle2 } from 'lucide-react';
+import { Mail, Phone, Calendar, Edit, Shield, Activity, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Sidebar from '@/components/Global/Sidebar';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Global/Header';
+import Image from 'next/image';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -28,6 +29,14 @@ type Permission = {
   description: string | null;
 };
 
+type Profile = {
+  id: number;
+  userId: number;
+  bio: string | null;
+  phone: string | null;
+  address: string | null;
+  profileImage: string | null;
+};
 type User = {
   id: number;
   name: string | null;
@@ -35,15 +44,29 @@ type User = {
   role: Role;
   status: string;
   createdAt: string;
+  profile: Profile | null;
+};
+
+
+
+type UserActivity = {
+  id: number;
+  action: string;
+  details: string | null;
+  ipAddress: string | null;
+  createdAt: string;
 };
 
 export default function UserDetailPage({ params }: Props) {
   const { id } = use(params);
   const [user, setUser] = useState<User | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [activities, setActivities] = useState<UserActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activitiesError, setActivitiesError] = useState('');
 
   const router = useRouter();
   const { data: session } = useSession();
@@ -68,6 +91,8 @@ export default function UserDetailPage({ params }: Props) {
           else setError('Failed to load user');
           return;
         }
+
+
 
         const data: User = await res.json();
         setUser(data);
@@ -112,6 +137,41 @@ export default function UserDetailPage({ params }: Props) {
     fetchPermissions();
   }, [user?.role?.id]);
 
+  // Fetch user activities
+  useEffect(() => {
+    if (!user?.id) {
+      setActivities([]);
+      return;
+    }
+
+    const fetchActivities = async () => {
+      setActivitiesLoading(true);
+      setActivitiesError('');
+      try {
+        const res = await fetch(`/api/users/${user.id}/activities`, {
+          cache: 'no-store',
+        });
+
+        if (res.ok) {
+          const data: UserActivity[] = await res.json();
+          setActivities(data);
+        } else {
+          setActivitiesError('Failed to load activities');
+          setActivities([]);
+        }
+      } catch (err) {
+        setActivitiesError('Network error');
+        setActivities([]);
+      } finally {
+        setActivitiesLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, [user?.id]);
+
+  console.log(user);
+
   // Loading state
   if (loading) {
     return (
@@ -148,21 +208,12 @@ export default function UserDetailPage({ params }: Props) {
   const initials = user.name
     ? user.name.split(' ').map(n => n[0].toUpperCase()).join('').slice(0, 2)
     : user.email[0].toUpperCase();
-    
-
-  // Mock activity (replace with real audit log later)
-  const activity = [
-    { action: 'Logged in', time: '2 hours ago' },
-    { action: 'Updated profile settings', time: '5 hours ago' },
-    { action: 'Exported monthly report', time: '1 day ago' },
-    { action: 'Added new team member', time: '3 days ago' },
-  ];
 
   return (
     <div className="flex h-screen bg-background text-foreground">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header/>
+        <Header />
         <div className=" border-b border-border px-6 py-4 flex items-center justify-between">
           <h1 className="text-3xl font-bold">User Profile</h1>
           <Link href={`/dashboard/users/${user.id}/edit`}>
@@ -178,7 +229,17 @@ export default function UserDetailPage({ params }: Props) {
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                 <Avatar className="h-24 w-24">
-                  <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
+                  {user.profile?.profileImage ? (
+                    <AvatarImage
+                      src={user.profile.profileImage}
+                      alt={`${user.name || user.email}'s profile picture`}
+                      className="object-cover"
+                    />
+                  ) : (
+
+                    <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
+                  )
+                  }
                 </Avatar>
                 <div className="text-center md:text-left flex-1">
                   <h2 className="text-2xl font-bold">{user.name || 'No Name'}</h2>
@@ -254,17 +315,45 @@ export default function UserDetailPage({ params }: Props) {
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>No detailed activity log available yet.</CardDescription>
+                  <CardDescription>View the user's latest actions and events.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {activity.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <p className="text-sm">{item.action}</p>
-                        <p className="text-sm text-muted-foreground">{item.time}</p>
-                      </div>
-                    ))}
-                  </div>
+                  {activitiesLoading ? (
+                    <div className="flex justify-center items-center h-32">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : activitiesError ? (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <AlertCircle className="h-5 w-5 text-destructive" />
+                      <p>{activitiesError}</p>
+                    </div>
+                  ) : activities.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center">
+                      No recent activity recorded.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {activities.map((item) => (
+                        <div key={item.id} className="flex items-start justify-between border-b pb-4 last:border-0">
+                          <div className="flex-1">
+                            <p className="font-medium">{item.action}</p>
+                            {item.details && (
+                              <p className="text-sm text-muted-foreground mt-1">{item.details}</p>
+                            )}
+                            {item.ipAddress && (
+                              <p className="text-xs text-muted-foreground mt-1">IP: {item.ipAddress}</p>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground text-right min-w-[120px]">
+                            {new Date(item.createdAt).toLocaleString('en-US', {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

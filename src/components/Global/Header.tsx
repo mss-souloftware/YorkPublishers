@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import Image from 'next/image';
 import { signOut } from 'next-auth/react';
 const Header = () => {
     const { theme, setTheme } = useTheme();
@@ -31,6 +32,8 @@ const Header = () => {
         router.push('/signin');
     };
 
+ 
+    // console.log("the session q "+session?.user.profileImage);
 
     return (
         <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
@@ -100,9 +103,28 @@ const Header = () => {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                             <Avatar className="h-10 w-10">
-                                <AvatarFallback className="bg-primary/10 text-primary">JD</AvatarFallback>
+                                {session?.user?.profileImage ? (
+                                    <Image
+                                        src={session.user.profileImage}
+                                        alt={session.user.name ?? 'User avatar'}
+                                        width={40}
+                                        height={40}
+                                        className="rounded-full object-cover"
+                                    />
+                                ) : (
+                                    <AvatarFallback className="bg-primary/10 text-primary">
+                                        {session?.user?.name
+                                            ? session.user.name
+                                                .split(' ')
+                                                .map(n => n[0]?.toUpperCase())
+                                                .join('')
+                                                .slice(0, 2)
+                                            : session?.user?.email?.[0]?.toUpperCase()}
+                                    </AvatarFallback>
+                                )}
                             </Avatar>
                         </Button>
+
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuLabel>

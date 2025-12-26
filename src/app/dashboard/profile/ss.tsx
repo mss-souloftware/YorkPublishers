@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,37 +10,106 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Bell, Lock, Moon, Sun, User, Upload, Loader2 } from 'lucide-react';
+import { Bell, Lock, Mail, Moon, Sun, User } from 'lucide-react';
 import Header from '@/components/Global/Header';
 import Sidebar from '@/components/Global/Sidebar';
 import { useSession } from 'next-auth/react';
+
+type ProfileData = {
+  id: number;
+  userId: number;
+  bio: string | null;
+  phone: string | null;
+  address: string | null;
+  profileImage: string | null;
+};
 
 export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
   const { data: session } = useSession();
 
   // Profile state
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(session?.user?.name || '');
+  const [email, setEmail] = useState(session?.user?.email || '');
   const [bio, setBio] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-
-  // UI state
+  const [profileImage, setProfileImage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-    const [currentPassword, setCurrentPassword] = useState('');
+
+  // Password change state (unchanged)
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-    const handlePasswordChange = async (e: React.FormEvent) => {
+  // Fetch profile data on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/profile', { cache: 'no-store' });
+
+        if (!res.ok) {
+          setError('Failed to load profile');
+          return;
+        }
+
+        const data = await res.json();
+        setName(data.name || '');
+        setEmail(data.email || '');
+        setBio(data.profile?.bio || '');
+        setPhone(data.profile?.phone || '');
+        setAddress(data.profile?.address || '');
+        setProfileImage(data.profile?.profileImage || '');
+      } catch {
+        setError('Network error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // Handle profile update
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setUpdateLoading(true);
+
+    try {
+      const res = await fetch('/api/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          bio,
+          phone,
+          address,
+          profileImage,
+        }),
+      });
+
+      if (res.ok) {
+        setSuccess('Profile updated successfully!');
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to update profile');
+      }
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
     setPasswordSuccess('');
@@ -96,116 +165,8 @@ export default function ProfilePage() {
     }
   };
 
-
-  // Fetch profile on load
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await fetch('/api/profile', { cache: 'no-store' });
-        if (!res.ok) throw new Error('Failed to load profile');
-
-        const data = await res.json();
-        setName(data.name || '');
-        setEmail(data.email || '');
-        setBio(data.profile?.bio || '');
-        setPhone(data.profile?.phone || '');
-        setAddress(data.profile?.address || '');
-        setProfileImage(data.profile?.profileImage || null);
-      } catch (err) {
-        setError('Failed to load profile data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, []);
-
-  // Handle image upload
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be under 5MB');
-      return;
-    }
-
-    setUploading(true);
-    setError('');
-    setSuccess('');
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/profile/upload-image', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.secure_url) {
-        setProfileImage(data.secure_url);
-        setSuccess('Image uploaded successfully!');
-      } else {
-        setError(data.error || 'Upload failed');
-      }
-    } catch {
-      setError('Network error during upload');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // Save profile changes
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setSaving(true);
-
-    try {
-      const res = await fetch('/api/profile/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name || null,
-          bio: bio || null,
-          phone: phone || null,
-          address: address || null,
-          profileImage: profileImage || null,
-        }),
-      });
-
-      if (res.ok) {
-        setSuccess('Profile updated successfully!');
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to save profile');
-      }
-    } catch {
-      setError('Network error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const initials = name
-    ? name.split(' ').map((n: string) => n[0].toUpperCase()).join('').slice(0, 2)
-    : email[0]?.toUpperCase() || 'U';
-
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div>Loading profile...</div>;
   }
 
   return (
@@ -216,43 +177,21 @@ export default function ProfilePage() {
 
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto space-y-8">
-            {/* Avatar Section */}
+            {/* Profile Header */}
             <Card>
               <CardContent className="pt-8">
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                  <div className="relative group">
-                    <Avatar className="h-40 w-40 border-4 border-background">
-                      {profileImage ? (
-                        <AvatarImage src={profileImage} alt="Profile" />
-                      ) : (
-                        <AvatarFallback className="text-5xl font-bold">{initials}</AvatarFallback>
-                      )}
-                    </Avatar>
-
-                    <label className="absolute bottom-0 right-0 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="bg-primary text-primary-foreground rounded-full p-4 shadow-lg hover:bg-primary/90">
-                        {uploading ? (
-                          <Loader2 className="h-6 w-6 animate-spin" />
-                        ) : (
-                          <Upload className="h-6 w-6" />
-                        )}
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                        disabled={uploading}
-                      />
-                    </label>
-                  </div>
-
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <Avatar className="h-32 w-32">
+                    <AvatarFallback className="text-4xl">
+                      {name ? name.split(' ').map(n => n[0]).join('') : email[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="text-center md:text-left">
-                    <h2 className="text-3xl font-bold">{name || 'Your Name'}</h2>
-                    <p className="text-xl text-muted-foreground">{email}</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Click the camera icon to change your avatar
-                    </p>
+                    <h2 className="text-2xl font-bold">{name}</h2>
+                    <p className="text-muted-foreground">{email}</p>
+                    <Button variant="outline" className="mt-4">
+                      Change Avatar
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -264,41 +203,40 @@ export default function ProfilePage() {
                 <TabsTrigger value="profile"><User className="mr-2 h-4 w-4" />Profile</TabsTrigger>
                 <TabsTrigger value="security"><Lock className="mr-2 h-4 w-4" />Security</TabsTrigger>
                 <TabsTrigger value="notifications"><Bell className="mr-2 h-4 w-4" />Notifications</TabsTrigger>
-                <TabsTrigger value="appearance">Appearance</TabsTrigger>
+                <TabsTrigger value="appearance"><Sun className="mr-2 h-4 w-4" />Appearance</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="profile" className="mt-8">
+              <TabsContent value="profile" className="mt-6 space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Personal Information</CardTitle>
-                    <CardDescription>Update your profile details</CardDescription>
+                    <CardDescription>Update your personal details.</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleSaveProfile} className="space-y-6">
+                  <CardContent className="space-y-4">
+                    <form onSubmit={handleProfileUpdate} className="space-y-4">
                       {error && (
-                        <div className="p-4 bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
+                        <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-lg">
                           {error}
                         </div>
                       )}
                       {success && (
-                        <div className="p-4 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 rounded-lg border border-green-500/20">
+                        <div className="p-4 text-sm text-green-600 bg-green-100 rounded-lg">
                           {success}
                         </div>
                       )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="name">Full Name</Label>
                           <Input
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="John Doe"
                           />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="email">Email</Label>
-                          <Input id="email" value={email} disabled />
+                          <Input id="email" type="email" value={email} disabled />
                         </div>
                       </div>
 
@@ -309,39 +247,48 @@ export default function ProfilePage() {
                           value={bio}
                           onChange={(e) => setBio(e.target.value)}
                           placeholder="Tell us about yourself..."
-                          rows={4}
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="phone">Phone</Label>
-                          <Input
-                            id="phone"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="+1 (555) 123-4567"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="address">Address</Label>
-                          <Input
-                            id="address"
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            placeholder="123 Main St, City, Country"
-                          />
-                        </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input
+                          id="phone"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="+1 (555) 000-0000"
+                        />
                       </div>
 
-                      <Button type="submit" disabled={saving} className="w-full md:w-auto">
-                        {saving ? 'Saving...' : 'Save Changes'}
+                      <div className="space-y-2">
+                        <Label htmlFor="address">Address</Label>
+                        <Input
+                          id="address"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="Your full address"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="profileImage">Profile Image URL</Label>
+                        <Input
+                          id="profileImage"
+                          value={profileImage}
+                          onChange={(e) => setProfileImage(e.target.value)}
+                          placeholder="https://example.com/image.jpg"
+                        />
+                      </div>
+
+                      <Button type="submit" disabled={updateLoading}>
+                        {updateLoading ? 'Saving...' : 'Save Changes'}
                       </Button>
                     </form>
                   </CardContent>
                 </Card>
               </TabsContent>
 
+              {/* Other tabs unchanged */}
               <TabsContent value="security" className="mt-6 space-y-6">
                 <Card>
                   <CardHeader>
@@ -360,7 +307,7 @@ export default function ProfilePage() {
                       <Label htmlFor="confirm">Confirm New Password</Label>
                       <Input id="confirm" type="password" />
                     </div>
-                    <Button onClick={handlePasswordChange}>Update Password</Button>
+                    <Button>Update Password</Button>
                   </CardContent>
                 </Card>
               </TabsContent>

@@ -18,7 +18,12 @@ export const authOptions: AuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
-          include: { role: true },
+          include: {
+            role: true,
+            profile: {
+              select: { profileImage: true },
+            },
+          },
         });
 
         if (!user) return null;
@@ -26,11 +31,13 @@ export const authOptions: AuthOptions = {
         const isValid = await verifyPassword(credentials.password, user.password);
         if (!isValid) return null;
 
+        console.log(user);
         return {
-          id: user.id.toString(),                    // ← Critical
+          id: user.id.toString(),
           email: user.email,
           name: user.name ?? null,
           role: user.role.name as "ADMIN" | "USER" | "CUSTOMER",
+          profileImage: user.profile?.profileImage ?? null,
         };
       },
     }),
@@ -42,20 +49,41 @@ export const authOptions: AuthOptions = {
 
   callbacks: {
     async jwt({ token, user }) {
-      // First call (during sign-in): `user` is available
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.profileImage = user.profileImage; 
       }
       return token;
     },
 
     async session({ session, token }) {
-      // Always copy from token → session
-      session.user.id = token.id as string;
-      session.user.role = token.role as "ADMIN" | "USER" | "CUSTOMER";
-
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as "ADMIN" | "USER" | "CUSTOMER";
+        session.user.profileImage = token.profileImage as string | null; 
+      }
       return session;
+    },
+
+    async signIn({ user }) {
+      if (user?.id) {
+        const userId = Number(user.id);
+
+        try {
+          await prisma.userActivity.create({
+            data: {
+              userId,
+              action: "Logged in",
+              details: "User signed in with email/password",
+            },
+          });
+        } catch (error) {
+          console.error("Failed to log login activity:", error);
+        }
+      }
+
+      return true;
     },
   },
 
