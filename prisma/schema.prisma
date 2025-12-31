@@ -8,33 +8,20 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  status    String   @default("Active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  roleId    Int
-  role      Role     @relation(fields: [roleId], references: [id])
+  id            Int              @id @default(autoincrement())
+  email         String           @unique
+  password      String
+  name          String?
+  status        String           @default("Active")
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  roleId        Int
+  role          Role             @relation(fields: [roleId], references: [id])
   passwordReset PasswordReset[]
-  activities UserActivity[]
-  profile   Profile?
+  activities    UserActivity[]
+  profile       Profile?
+  books         BookSubmission[]
 }
-
-model Profile {
-  id            Int      @id @default(autoincrement())
-  userId        Int      @unique
-  bio           String?
-  phone         String?
-  address       String?
-  profileImage  String?  // URL to uploaded image
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
 
 model Role {
   id          Int              @id @default(autoincrement())
@@ -45,6 +32,19 @@ model Role {
   users       User[]
 }
 
+model Profile {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  bio          String?
+  phone        String?
+  address      String?
+  profileImage String? // URL to uploaded image
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model PasswordReset {
   id        Int      @id @default(autoincrement())
   userId    Int
@@ -52,7 +52,7 @@ model PasswordReset {
   expires   DateTime
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Permission {
@@ -82,8 +82,50 @@ model UserActivity {
   userAgent String?
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model BookSubmission {
+  id     Int  @id @default(autoincrement())
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName    String?
+  penName     String?
+  mobilePhone String?
+  homePhone   String?
+  address     String?
+  email       String?
+
+  title               String?
+  subtitle            String?
+  aboutAuthor         String?
+  photoCount          Int?    @default(0)
+  copyrightedMaterial String?
+  targetAudience      String?
+
+  dedications      String?
+  acknowledgements String?
+  backCoverBlurb   String?
+
+  categories String[] @default([])
+
+  coverIdea  String?
+  coverNotes String?
+
+  profileImage String?
+  coverImage   String?
+
+  status    String   @default("Draft")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([status])
+@@index([userId, status])
+
 }

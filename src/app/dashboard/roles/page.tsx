@@ -39,20 +39,20 @@ export default function RolesManagementPage() {
   const router = useRouter();
   const { data: session } = useSession();
 
-  // Admin only
+ 
   useEffect(() => {
     if (session && session.user.role !== 'ADMIN') {
       router.push('/dashboard');
     }
   }, [session, router]);
 
-  // Fetch roles and all permissions
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [rolesRes, permsRes] = await Promise.all([
           fetch('/api/roles', { cache: 'no-store' }),
-          fetch('/api/permissions', { cache: 'no-store' }), // You'll need this endpoint
+          fetch('/api/permissions', { cache: 'no-store' }), 
         ]);
 
         if (!rolesRes.ok || !permsRes.ok) throw new Error('Failed to load data');
@@ -77,7 +77,7 @@ export default function RolesManagementPage() {
     fetchData();
   }, []);
 
-  // Fetch permissions for selected role
+
   useEffect(() => {
     if (!selectedRole) {
       setRolePermissions(new Set());
@@ -164,7 +164,6 @@ export default function RolesManagementPage() {
             </CardHeader>
 
             <CardContent className="space-y-8">
-              {/* Role Selector */}
               <div className="flex flex-wrap gap-4">
                 {roles.map((role) => (
                   <Button

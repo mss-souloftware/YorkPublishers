@@ -54,6 +54,7 @@
     "shadcn": "^3.6.2",
     "sheet": "^0.2.0",
     "switch": "^0.0.0",
+    "swr": "^2.3.8",
     "table": "^6.9.0",
     "tailwind-merge": "^3.4.0",
     "tooltip": "^1.6.1"

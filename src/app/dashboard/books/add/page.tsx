@@ -1,66 +1,217 @@
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 import { Progress } from '@/components/ui/progress';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ChevronLeft, ChevronRight, Upload, FileText, Image, Shield, Mic, CreditCard } from 'lucide-react';
-import { useRouter } from "next/navigation";
+import {
+  ChevronLeft,
+  ChevronRight,
+  User,
+  FileText,
+  NotebookTabs,
+  ChartBarStacked,
+  Image,
+  CreditCard,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import Sidebar from '@/components/Global/Sidebar';
 import Header from '@/components/Global/Header';
 
+import Step1PersonalInfo from '@/components/BookFormSteps/Step1PersonalInfo';
+import Step2BookDetails from '@/components/BookFormSteps/Step2BookDetails';
+import Step3AdditionalDetails from '@/components/BookFormSteps/Step3AdditionalDetails';
+import Step4BookCategory from '@/components/BookFormSteps/Step4BookCategory';
+import Step5CoverDesign from '@/components/BookFormSteps/Step5CoverDesign';
+import Step6Payment from '@/components/BookFormSteps/Step6Payment';
+
 const steps = [
-  { id: 1, title: 'Book Details', icon: FileText },
-  { id: 2, title: 'Manuscript', icon: Upload },
-  { id: 3, title: 'Cover Design', icon: Image },
-  { id: 4, title: 'Copyright', icon: Shield },
-  { id: 5, title: 'Audiobook', icon: Mic },
+  { id: 1, title: 'Personal Information', icon: User },
+  { id: 2, title: 'Book Details', icon: FileText },
+  { id: 3, title: 'Additional Details', icon: NotebookTabs },
+  { id: 4, title: 'Book Category', icon: ChartBarStacked },
+  { id: 5, title: 'Cover Design', icon: Image },
   { id: 6, title: 'Payment', icon: CreditCard },
 ];
 
 export default function NewBookSubmission() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, steps.length));
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+  const [formData, setFormData] = useState<any>({});
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const progress = (currentStep / steps.length) * 100;
 
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const res = await fetch('/api/books');
+        if (res.ok) {
+          const draft = await res.json();
+          if (draft) {
+            setFormData(draft);
+            setSelectedCategories(draft.categories || []);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load draft:', err);
+      }
+    };
+    loadDraft();
+  }, []);
+
+  const updateFormData = (newData: Partial<any>) => {
+    setFormData((prev: any) => ({ ...prev, ...newData }));
+  };
+
+  const saveDraft = async () => {
+    try {
+      const res = await fetch('/api/books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          categories: selectedCategories,
+          status: 'Draft',
+        }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to save draft');
+      }
+    } catch (err) {
+      console.error('Draft save failed:', err);
+      toast.error('Failed to save draft');
+    }
+  };
+
+  const deleteDraft = async () => {
+    try {
+      const res = await fetch('/api/books', {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        throw new Error('Failed to delete draft');
+      }
+    } catch (err) {
+      console.error('Draft delete failed:', err);
+    }
+  };
+
+  const nextStep = async () => {
+    if (currentStep < steps.length) {
+      await saveDraft();
+      setCurrentStep((prev) => prev + 1);
+    }
+  };
+
+  const prevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleFinalSubmit = async () => {
+    if (isSubmitting) return;
+
+    if (!formData.title) {
+      toast.error('Book title is required!');
+      return;
+    }
+    if (selectedCategories.length === 0) {
+      toast.error('At least one category is required!');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          categories: selectedCategories,
+          status: 'Submitted',
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Submission failed');
+      }
+
+      await deleteDraft(); // Delete draft after successful submit
+
+      toast.success('Book submitted successfully for review!');
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1500);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit book. Please try again.');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return <Step1PersonalInfo data={formData} updateData={updateFormData} />;
+      case 2:
+        return <Step2BookDetails data={formData} updateData={updateFormData} />;
+      case 3:
+        return <Step3AdditionalDetails data={formData} updateData={updateFormData} />;
+      case 4:
+        return (
+          <Step4BookCategory
+            selected={selectedCategories}
+            setSelected={setSelectedCategories}
+          />
+        );
+      case 5:
+        return <Step5CoverDesign data={formData} updateData={updateFormData} />;
+      case 6:
+        return <Step6Payment />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background text-foreground">
-      <Sidebar/>
+      <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header/>
-        <div className=" border-b border-border px-6 py-4">
+        <Header />
+        <div className="border-b border-border px-6 py-4">
           <h1 className="text-3xl font-bold">Submit New Book for Publishing</h1>
-          <p className="text-muted-foreground">Complete all steps to send your manuscript for review</p>
+          <p className="text-muted-foreground">
+            Complete all steps to send your manuscript for review
+          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto space-y-8">
-            {/* Progress Bar */}
+            {/* Progress */}
             <div className="space-y-2">
               <Progress value={progress} className="h-2" />
-              <p className="text-sm text-muted-foreground text-center">
-                Step {currentStep} of {steps.length}
+              <p className="text-sm text-center text-muted-foreground">
+                Step {currentStep} of {steps.length} — {steps[currentStep - 1].title}
               </p>
             </div>
 
-            {/* Step Indicator */}
+            {/* Step Icons */}
             <div className="grid grid-cols-6 gap-4">
-              {steps.map((step, index) => (
+              {steps.map((step) => (
                 <div
                   key={step.id}
-                  className={`flex flex-col items-center space-y-2 ${
+                  className={`text-center ${
                     currentStep >= step.id ? 'text-primary' : 'text-muted-foreground'
                   }`}
                 >
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
+                    className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center border-2 ${
                       currentStep >= step.id
                         ? 'border-primary bg-primary/10'
                         : 'border-muted-foreground/30'
@@ -68,196 +219,43 @@ export default function NewBookSubmission() {
                   >
                     <step.icon className="h-5 w-5" />
                   </div>
-                  <p className="text-xs text-center">{step.title}</p>
+                  <p className="text-xs mt-2">{step.title}</p>
                 </div>
               ))}
             </div>
 
-            <Card className="mt-8">
-              <CardHeader>
-                <CardTitle>{steps[currentStep - 1].title}</CardTitle>
-                <CardDescription>
-                  {currentStep === 1 && 'Enter basic information about your book'}
-                  {currentStep === 2 && 'Upload your final manuscript file'}
-                  {currentStep === 3 && 'Upload a proposed cover design'}
-                  {currentStep === 4 && 'Request copyright registration assistance'}
-                  {currentStep === 5 && 'Request an audiobook production (optional)'}
-                  {currentStep === 6 && 'Complete payment to submit for review'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Step 1: Book Details */}
-                {currentStep === 1 && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label>Title</Label>
-                        <Input placeholder="The Great Adventure" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>ISBN (optional)</Label>
-                        <Input placeholder="978-3-16-148410-0" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Publication Date (planned)</Label>
-                      <Input type="date" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description / Synopsis</Label>
-                      <Textarea rows={6} placeholder="Write a compelling summary of your book..." />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Genre / Category</Label>
-                      <Input placeholder="Fiction, Mystery, Self-Help..." />
-                    </div>
-                  </>
-                )}
+            {/* Current Step Content */}
+            <div className="mt-8">{renderStep()}</div>
 
-                {/* Step 2: Manuscript Upload */}
-                {currentStep === 2 && (
-                  <div className="space-y-6">
-                    <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-12 text-center">
-                      <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                      <p className="mt-4 text-lg font-medium">Drop your manuscript here</p>
-                      <p className="text-sm text-muted-foreground">PDF, DOCX, or EPUB • Max 50MB</p>
-                      <Button variant="outline" className="mt-4">
-                        Choose File
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Version: Draft v1.0 • Submitted automatically upon completion
-                    </p>
-                  </div>
-                )}
+            {/* Navigation */}
+            <div className="flex justify-between pt-8">
+              <Button
+                variant="outline"
+                onClick={prevStep}
+                disabled={currentStep === 1}
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Previous
+              </Button>
 
-                {/* Step 3: Cover Design */}
-                {currentStep === 3 && (
-                  <div className="space-y-6">
-                    <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-12 text-center">
-                      <Image className="mx-auto h-12 w-12 text-muted-foreground" />
-                      <p className="mt-4 text-lg font-medium">Upload Cover Design</p>
-                      <p className="text-sm text-muted-foreground">High-res JPG/PNG • 1600x2560 recommended</p>
-                      <Button variant="outline" className="mt-4">
-                        Choose File
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Designer Name (optional)</Label>
-                      <Input placeholder="John Doe Designs" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4: Copyright */}
-                {currentStep === 4 && (
-                  <div className="space-y-6">
-                    <RadioGroup defaultValue="yes">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="yes" id="copyright-yes" />
-                        <Label htmlFor="copyright-yes">Yes, I want assistance registering copyright</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="no" id="copyright-no" />
-                        <Label htmlFor="copyright-no">No, I will handle copyright myself</Label>
-                      </div>
-                    </RadioGroup>
-                    <div className="space-y-2">
-                      <Label>Additional Notes (optional)</Label>
-                      <Textarea rows={4} placeholder="Any special instructions for copyright filing..." />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 5: Audiobook */}
-                {currentStep === 5 && (
-                  <div className="space-y-6">
-                    <RadioGroup defaultValue="no">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="yes" id="audio-yes" />
-                        <Label htmlFor="audio-yes">Yes, produce an audiobook version</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="no" id="audio-no" />
-                        <Label htmlFor="audio-no">No audiobook needed</Label>
-                      </div>
-                    </RadioGroup>
-                    <div className="space-y-2">
-                      <Label>Preferred Narrator Style (optional)</Label>
-                      <Input placeholder="Deep male voice, British accent..." />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 6: Payment */}
-                {currentStep === 6 && (
-                  <div className="space-y-6">
-                    <div className="bg-muted/50 rounded-lg p-6 space-y-4">
-                      <div className="flex justify-between">
-                        <span>Manuscript Review Fee</span>
-                        <span className="font-semibold">$149.00</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Copyright Assistance (optional)</span>
-                        <span className="font-semibold">$99.00</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Audiobook Production Deposit (optional)</span>
-                        <span className="font-semibold">$299.00</span>
-                      </div>
-                      <div className="border-t pt-4 flex justify-between text-lg font-bold">
-                        <span>Total</span>
-                        <span>$547.00</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Card Number</Label>
-                        <Input placeholder="1234 5678 9012 3456" />
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label>Expiry</Label>
-                          <Input placeholder="MM/YY" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>CVC</Label>
-                          <Input placeholder="123" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>ZIP</Label>
-                          <Input placeholder="12345" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Navigation Buttons */}
-                <div className="flex justify-between pt-6">
-                  <Button
-                    variant="outline"
-                    onClick={prevStep}
-                    disabled={currentStep === 1}
-                  >
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    Previous
-                  </Button>
-
-                  {currentStep === steps.length ? (
-                    <Button size="lg">
-                      Submit for Review
-                    </Button>
+              {currentStep === steps.length ? (
+                <Button onClick={handleFinalSubmit} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>Submitting...</>
                   ) : (
-                    <Button onClick={nextStep}>
-                      Next
+                    <>
+                      Submit for Review
                       <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
+                    </>
                   )}
-                </div>
-              </CardContent>
-            </Card>
+                </Button>
+              ) : (
+                <Button onClick={nextStep}>
+                  Next
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>

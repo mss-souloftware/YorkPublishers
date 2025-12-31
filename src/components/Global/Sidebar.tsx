@@ -32,6 +32,7 @@ const Sidebar = () => {
     { icon: Activity, label: 'Analytics', link: 'analytics' },
     { icon: DollarSign, label: 'Revenue', link: 'revenue' },
     { icon: Book, label: 'Books', link: 'books/add' },
+    { icon: Book, label: 'Submissions', link: 'books/submissions', adminOnly: true },
     { icon: Settings, label: 'Settings', link: 'settings' },
   ];
 
