@@ -8,11 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Eye, EyeOff } from 'lucide-react';
 import { signIn, useSession } from 'next-auth/react';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // New state
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +24,7 @@ export default function SignInPage() {
 
   // Redirect authenticated users based on role
   useEffect(() => {
-    if (status === 'loading') return; // Still loading session
+    if (status === 'loading') return;
 
     if (session?.user?.role) {
       if (session.user.role === 'ADMIN') {
@@ -43,27 +45,22 @@ export default function SignInPage() {
     const res = await signIn('credentials', {
       email,
       password,
-      redirect: false, // Important: prevents full page redirect
+      redirect: false,
     });
 
     if (res?.error) {
-      // Common NextAuth error codes
       if (res.error === 'CredentialsSignin') {
         setError('Invalid email or password');
       } else {
         setError(res.error || 'Something went wrong. Please try again.');
       }
     } else if (res?.ok) {
-      // Success! Session will update soon via useSession()
-      // Do NOT reset isLoading yet — let the redirect happen naturally
-      // Button will stay "Signing in..." briefly, then page changes
       return;
     }
 
-    setIsLoading(false); // Only reset loading if there was an error
+    setIsLoading(false);
   };
 
-  // Optional: Show loading spinner on initial session check
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -103,15 +100,32 @@ export default function SignInPage() {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"} // Toggle type
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="pr-10" // Space for icon
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-2 h-6 w-6 p-0 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between">

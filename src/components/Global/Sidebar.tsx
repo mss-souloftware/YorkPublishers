@@ -10,7 +10,9 @@ import {
   Activity,
   DollarSign,
   Book,
-  UserLock 
+  UserLock, 
+  MessageCircleDashed,
+  Archive
 } from 'lucide-react';
 
 import Link from 'next/link';
@@ -32,7 +34,8 @@ const Sidebar = () => {
     { icon: Activity, label: 'Analytics', link: 'analytics' },
     { icon: DollarSign, label: 'Revenue', link: 'revenue' },
     { icon: Book, label: 'Books', link: 'books/add' },
-    { icon: Book, label: 'Submissions', link: 'books/submissions', adminOnly: true },
+    { icon: MessageCircleDashed, label: 'Chats', link: 'chats' },
+    { icon: Archive, label: 'Submissions', link: 'books/submissions', adminOnly: true },
     { icon: Settings, label: 'Settings', link: 'settings' },
   ];
 
@@ -44,7 +47,7 @@ const Sidebar = () => {
     >
       {/* Header */}
       <div className="p-4 flex items-center justify-between">
-        {sidebarOpen && <h1 className="font-bold text-xl invert w-50"><Image src="/favicon.png" alt="Logo" width={170} height={70}></Image></h1>}
+        {sidebarOpen && <h1 className="font-bold text-xl dark:invert w-50"><Image src="/favicon.png" alt="Logo" width={170} height={70}></Image></h1>}
 
         <Button
           variant="ghost"

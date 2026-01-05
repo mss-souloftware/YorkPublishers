@@ -21,6 +21,10 @@ model User {
   activities    UserActivity[]
   profile       Profile?
   books         BookSubmission[]
+  createdThreads     ChatThread[] @relation("CreatedThreads")
+  participatedThreads ChatThread[] @relation("ParticipatedThreads")
+  messages           Message[]
+  readReceipts      ReadReceipt[]
 }
 
 model Role {
@@ -126,6 +130,35 @@ model BookSubmission {
   @@index([userId])
   @@index([createdAt])
   @@index([status])
-@@index([userId, status])
+  @@index([userId, status])
+}
 
+model ChatThread {
+  id           Int       @id @default(autoincrement())
+  title        String?   // Optional for groups, e.g., "Group with User1 and User2"
+  createdAt    DateTime  @default(now())
+  creatorId    Int
+  creator      User      @relation("CreatedThreads", fields: [creatorId], references: [id])
+  participants User[]    @relation("ParticipatedThreads")
+  messages     Message[]
+  readReceipts ReadReceipt[]
+}
+
+model Message {
+  id        Int       @id @default(autoincrement())
+  content   String
+  createdAt DateTime  @default(now())
+  senderId  Int
+  sender    User      @relation(fields: [senderId], references: [id])
+  threadId  Int
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+}
+
+model ReadReceipt {
+  userId     Int
+  threadId   Int
+  lastReadAt DateTime  @default(now()) @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread     ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  @@id([userId, threadId])
 }
