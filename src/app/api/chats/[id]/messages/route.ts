@@ -76,20 +76,19 @@ export async function POST(
 
   // Create message in database
   try {
-   const message = await prisma.message.create({
-  data: {
-    content,
-    attachments: attachments && attachments.length > 0 ? attachments : undefined,
-    senderId: userId,
-    threadId,
-  },
-  include: {
-    sender: {
-      select: { id: true, name: true },
-    },
-  },
-});
-
+    const message = await prisma.message.create({
+      data: {
+        content: content ? content.trim() : null, // Safe: only trim if exists
+        attachments: attachments && attachments.length > 0 ? attachments : undefined,
+        senderId: userId,
+        threadId,
+      },
+      include: {
+        sender: {
+          select: { id: true, name: true },
+        },
+      },
+    });
 
     return NextResponse.json(message, { status: 201 });
   } catch (error) {
