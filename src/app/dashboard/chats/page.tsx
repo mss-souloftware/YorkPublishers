@@ -149,13 +149,20 @@ export default function ChatsPage() {
 
     const others = thread.participants.filter(p => p.id !== currentUserId);
 
-        if (session?.user.role === 'USER' || session?.user.role === 'CUSTOMER') {
+    if (session?.user.role === 'USER' || session?.user.role === 'CUSTOMER') {
       if (others.length >= 1 && thread.title == null) {
-        const names =  `${others.length+1} members`;
-        return names 
+        const names = `${others.length + 1} members`;
+        return names
       }
     }
-    console.log('Calculating display name for thread:', thread.id, 'with participants:', thread.participants, 'and others:', others);
+
+    if(session?.user.role === 'ADMIN') {
+      if (others.length === 1 ) {
+        const names = others[0].name?.trim() || others[0].email.split('@')[0];
+        return names
+      }
+    }
+    // console.log('Calculating display name for thread:', thread.id, 'with participants:', thread.participants, 'and others:', others);
     if (others.length === 0) {
       if (thread.creator && thread.creator.id !== currentUserId) {
         return thread.creator.name || thread.creator.email || 'Admin';
@@ -248,8 +255,8 @@ export default function ChatsPage() {
                               <div
                                 key={user.id}
                                 className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedUserIds.includes(user.id)
-                                    ? 'bg-accent'
-                                    : 'hover:bg-accent/50'
+                                  ? 'bg-accent'
+                                  : 'hover:bg-accent/50'
                                   }`}
                                 onClick={() => toggleUserSelection(user.id)}
                               >
@@ -269,8 +276,8 @@ export default function ChatsPage() {
                                   )}
                                 </div>
                                 <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${selectedUserIds.includes(user.id)
-                                    ? 'border-primary bg-primary'
-                                    : 'border-muted-foreground'
+                                  ? 'border-primary bg-primary'
+                                  : 'border-muted-foreground'
                                   }`}>
                                   {selectedUserIds.includes(user.id) && (
                                     <div className="w-3 h-3 bg-primary-foreground rounded-full" />

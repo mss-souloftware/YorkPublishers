@@ -146,9 +146,11 @@ model ChatThread {
 
 model Message {
   id        Int       @id @default(autoincrement())
-  content   String
+  content   String?
+  attachments Json?
   createdAt DateTime  @default(now())
   senderId  Int
+  editedAt     DateTime? 
   sender    User      @relation(fields: [senderId], references: [id])
   threadId  Int
   thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
@@ -162,3 +164,4 @@ model ReadReceipt {
   thread     ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   @@id([userId, threadId])
 }
+
